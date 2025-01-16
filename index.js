@@ -132,7 +132,7 @@ app.post('/api/v1/token', async (req, res) => {
         }
 
         const { auth: authKey, orderId, orderAmount, userId, mobile, name } = req.body;
-
+         console.log('serverData'+serverData)
         if (serverData.AUTH && serverData.AUTH === authKey) {
             if (!orderId || !orderAmount || !userId) {
                 return res.status(400).json({ error: "Missing required fields" });
