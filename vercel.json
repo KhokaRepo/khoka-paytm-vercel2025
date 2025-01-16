@@ -10,6 +10,14 @@
       {
         "src": "/(.*)",
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTION"]
+      },
+      {
+        "src": "/api/v1/token",
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTION"]
+      }
+      ,{
+        "src": "/api/v1/query-transaction-status",
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTION"]
       }
     ]
   }

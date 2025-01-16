@@ -22,13 +22,13 @@ app.get('/', (req, res) => {
     res.status(200).json({
         message: 'success',
         status: 'ok',
-        gateway: 'development KDV app'
+        gateway: 'developmen app'
         // pkey: process.env
     });
 });
 
 // Generate Paytm Token
-app.post('/api/v1/token', async (req, res) => {
+app.post('/api/v2/token', async (req, res) => {
     const { orderId, amount: orderAmount, userId } = req.query;
 
     if (!orderId || orderId.length <= 2) {
@@ -87,7 +87,7 @@ app.post('/api/v1/token', async (req, res) => {
 });
 
 // Authenticate User and Process Payment
-app.post('/token', async (req, res) => {
+app.post('/api/v1/token', async (req, res) => {
     try {
         const user = await authenticateUser(email, password);
         if (!user) {
