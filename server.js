@@ -1,7 +1,7 @@
 const express = require("express");
-const { db, realtimeDb } = require('./firebase');
-const { collection, addDoc, getDocs } = require('firebase/firestore/lite');
-const { authenticateUser, email, password, mids, mkeys, midp, mkeyp } = require('./authenticate');
+const {db} = require('./firebase');
+const {collection, getDocs} = require('firebase/firestore/lite');
+const {authenticateUser, email, password, mids, mkeys, midp, mkeyp} = require('./authenticate');
 const bodyParser = require("body-parser");
 const https = require('https');
 const PaytmChecksum = require('paytmchecksum');
