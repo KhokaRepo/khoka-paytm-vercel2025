@@ -9,6 +9,7 @@ const userData = require("./MOCK_DATA.json");
 
 const app = express();
 const PORT = process.env.PORT || 8080;
+const cors = require('cors');
 
 const isProd = true;
 let mid = mids;
@@ -26,6 +27,28 @@ app.get('/', (req, res) => {
         // pkey: process.env
     });
 });
+
+// Define allowed origins for production
+const allowedOrigins = ['https://khoka-dev.web.app','http://127.0.0.1:5002','http://localhost:4200'];
+
+app.use(cors({
+    origin: function (origin, callback) {
+      // Allow requests with no origin (e.g., mobile apps or Postman)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) === -1) {
+        const msg = 'The CORS policy for this site does not allow access from the specified origin.';
+        return callback(new Error(msg), false);
+      }
+      return callback(null, true);
+    },
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true, // Allow credentials (cookies, authorization headers)
+  }));
+  
+  // Example route
+  app.get('/api/v1/cors', (req, res) => {
+    res.json({ message: 'CORS is configured properly!' });
+  });
 
 // Generate Paytm Token
 app.post('/api/v2/token', async (req, res) => {
