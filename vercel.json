@@ -6,19 +6,11 @@
             "use": "@vercel/node"
         }
     ],
-    "routes": [
-        {
-            "src": "/(.*)",
-            "methods": [
-                "GET",
-                "POST",
-                "PUT",
-                "DELETE",
-                "OPTION"
-            ]
-        }
-    ],
     "rewrites": [
+        {
+            "source": "/(.*)",
+           "destination":"index.js"
+        },
         {
             "source": "/api/v1/token",
             "destination":"index.js"
