@@ -22,7 +22,8 @@ app.get('/', (req, res) => {
     res.status(200).json({
         message: 'success',
         status: 'ok',
-        pkey: process.env
+        gateway: 'development KDV app'
+        // pkey: process.env
     });
 });
 
