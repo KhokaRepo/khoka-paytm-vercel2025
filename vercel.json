@@ -1,88 +1,176 @@
 {
-    "version": 2,
-    "builds": [
+  "version": 2.1,
+  "builds": [
+    {
+      "src": "./index.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "index.js"
+    },
+    {
+      "source": "/api/v1/token",
+      "destination": "index.js"
+    },
+    {
+      "source": "/api/v1/query-transaction-status",
+      "destination": "index.js"
+    },
+    {
+      "source": "/api/v1/send-mail",
+      "destination": "index.js"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/v1/token",
+      "headers": [
         {
-            "src": "./index.js",
-            "use": "@vercel/node"
+          "key": "Access-Control-Allow-Origin",
+          "value": "http://localhost:4200"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        },
+        {
+          "key": "Access-Control-Allow-Credentials",
+          "value": "true"
         }
-    ],
-    "rewrites": [
-        {
-            "source": "/(.*)",
-           "destination":"index.js"
-        },
-        {
-            "source": "/api/v1/token",
-            "destination":"index.js"
-        },
-        {
-            "source": "/api/v1/query-transaction-status",
-            "destination":"index.js"
-        }
-    ],
-    "headers": [
-        {
-          "source": "/api/v1/token",
-          "headers": [
-            {
-              "key": "Access-Control-Allow-Origin",
-              "value": "http://localhost:4200"
-            },
-            {
-              "key": "Access-Control-Allow-Methods",
-              "value": "GET, POST, PUT, DELETE"
-            },
-            {
-              "key": "Access-Control-Allow-Headers",
-              "value": "Content-Type, Authorization"
-            },
-            {
-              "key": "Access-Control-Allow-Credentials",
-              "value": "true"
-            }
-          ]
-        },
-        {
-            "source": "/",
-            "headers": [
-              {
-                "key": "Access-Control-Allow-Origin",
-                "value": "http://localhost:4200"
-              },
-              {
-                "key": "Access-Control-Allow-Methods",
-                "value": "GET, POST, PUT, DELETE"
-              },
-              {
-                "key": "Access-Control-Allow-Headers",
-                "value": "Content-Type, Authorization"
-              },
-              {
-                "key": "Access-Control-Allow-Credentials",
-                "value": "true"
-              }
-            ]
-          },
-          {
-            "source": "/cors",
-            "headers": [
-              {
-                "key": "Access-Control-Allow-Origin",
-                "value": "http://localhost:4200"
-              },
-              {
-                "key": "Access-Control-Allow-Methods",
-                "value": "GET, POST, PUT, DELETE"
-              },
-              {
-                "key": "Access-Control-Allow-Headers",
-                "value": "Content-Type, Authorization"
-              },
-              {
-                "key": "Access-Control-Allow-Credentials",
-                "value": "true"
-              }
-            ]
-          }
       ]
+    },
+    {
+      "source": "/api/v1/token",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+         "value": "https://khoka-dev.web.app/"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        },
+        {
+          "key": "Access-Control-Allow-Credentials",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "source": "/",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "http://localhost:4200"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        },
+        {
+          "key": "Access-Control-Allow-Credentials",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "source": "/cors",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "http://localhost:4200"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        },
+        {
+          "key": "Access-Control-Allow-Credentials",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "source": "/api/v1/send-mail",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "http://localhost:4200"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        },
+        {
+          "key": "Access-Control-Allow-Credentials",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "source": "/api/v1/send-mail",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "https://khoka.co"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        },
+        {
+          "key": "Access-Control-Allow-Credentials",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "source": "/api/v1/send-mail",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "https://khoka-dev.web.app/"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        },
+        {
+          "key": "Access-Control-Allow-Credentials",
+          "value": "true"
+        }
+      ]
+    }
+  ]
 }

@@ -6,6 +6,8 @@ const mids = process.env.MIDS;
 const mkeys = process.env.MKEYS;
 const midp = process.env.MIDP;
 const mkeyp = process.env.MKEYP;
+const mailEmail = process.env.MAILEMAIL;
+const mailPassword = process.env.MAILPASSWORD;
 const authenticateUser = async (email, password) => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);

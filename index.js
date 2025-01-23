@@ -1,12 +1,12 @@
 const express = require("express");
-const {db} = require('./firebase');
-const {collection, getDocs} = require('firebase/firestore/lite');
-const {authenticateUser, email, password, mids, mkeys, midp, mkeyp} = require('./authenticate');
+const { db } = require('./firebase');
+const { collection, getDocs } = require('firebase/firestore/lite');
+const { authenticateUser, email, password,mailEmail, mailPassword,mids, mkeys, midp, mkeyp } = require('./authenticate');
 const bodyParser = require("body-parser");
 const https = require('https');
 const PaytmChecksum = require('paytmchecksum');
 const userData = require("./MOCK_DATA.json");
-
+const nodemailer = require('nodemailer');
 const app = express();
 const PORT = process.env.PORT || 8080;
 const cors = require('cors');
@@ -29,26 +29,26 @@ app.get('/', (req, res) => {
 });
 
 // Define allowed origins for production
-const allowedOrigins = ['https://khoka-dev.web.app','http://127.0.0.1:5002','http://localhost:4200'];
+const allowedOrigins = ['https://khoka-dev.web.app', 'http://127.0.0.1:5002', 'http://localhost:4200','https://khoka.co'];
 
 app.use(cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (e.g., mobile apps or Postman)
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.indexOf(origin) === -1) {
-        const msg = 'The CORS policy for this site does not allow access from the specified origin.';
-        return callback(new Error(msg), false);
-      }
-      return callback(null, true);
+        // Allow requests with no origin (e.g., mobile apps or Postman)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) === -1) {
+            const msg = 'The CORS policy for this site does not allow access from the specified origin.';
+            return callback(new Error(msg), false);
+        }
+        return callback(null, true);
     },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true, // Allow credentials (cookies, authorization headers)
-  }));
-  
-  // Example route
-  app.get('/api/v1/cors', (req, res) => {
+}));
+
+// Example route
+app.get('/api/v1/cors', (req, res) => {
     res.json({ message: 'CORS is configured properly!' });
-  });
+});
 
 // Generate Paytm Token
 app.post('/api/v2/token', async (req, res) => {
@@ -114,9 +114,8 @@ app.post('/api/v1/token', async (req, res) => {
     try {
         const user = await authenticateUser(email, password);
         if (!user) {
-            return res.status(403).json({error: 'User authentication failed' });
+            return res.status(403).json({ error: 'User authentication failed' });
         }
-
         const usersRef = collection(db, 'CREDENTIALS');
         const credentialsSnapshot = await getDocs(usersRef);
         const credentialDoc = credentialsSnapshot.docs.find(doc => doc.id === 'PAYTM');
@@ -132,7 +131,7 @@ app.post('/api/v1/token', async (req, res) => {
         }
 
         const { auth: authKey, orderId, orderAmount, userId, mobile, name } = req.body;
-         console.log('serverData'+serverData)
+        console.log('serverData' + serverData)
         if (serverData.AUTH && serverData.AUTH === authKey) {
             if (!orderId || !orderAmount || !userId) {
                 return res.status(400).json({ error: "Missing required fields" });
@@ -280,6 +279,46 @@ app.use('*', (req, res) => {
 app.get("/rest/getAllUsers", (req, res) => {
     res.json(userData);
 });
+
+app.post('/api/v1/send-mail', async (req, res) => {
+    console.log(req.body)
+    const { userName, email, status, orderAmount, orderID, transcationId } = req.body;
+  
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
+      auth: {
+        user: mailEmail, // Replace with your email
+        pass: mailPassword, // Replace with your app-specific password
+      },
+    });
+  
+    const subject =
+      status.toUpperCase() === 'PAYMENT'
+        ? `Your Order for Khoka Self Driving Order ID: ${orderID} has been successfully placed`
+        : `Your Request to Cancel Khoka Self Driving Order ID: ${orderID} is being processed`;
+  
+    const body =
+      status.toUpperCase() === 'PAYMENT'
+        ? `Hi, ${userName}\nThanks for booking your Scooty at Khoka Self Driving...`
+        : `Hi, ${userName}\nYour cancellation for order ID ${orderID} is being processed...`;
+  
+    const mailOptions = {
+      from: mailEmail,
+      to: email,
+      subject: subject,
+      text: body,
+    };
+  
+    try {
+      await transporter.sendMail(mailOptions);
+      res.status(200).send('Email sent successfully');
+    } catch (error) {
+      console.error('Error sending email:', error);
+      res.status(500).send('Error sending email');
+    }
+  });
 
 // Start Server
 app.listen(PORT, () => {
