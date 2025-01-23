@@ -19,4 +19,4 @@ const authenticateUser = async (email, password) => {
   }
 };
 
-module.exports = { authenticateUser, email, password, mids, mkeys, midp, mkeyp };
+module.exports = { authenticateUser, email, password, mids, mkeys, midp, mkeyp, mailEmail, mailPassword };

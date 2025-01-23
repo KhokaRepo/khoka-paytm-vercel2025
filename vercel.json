@@ -7,10 +7,7 @@
     }
   ],
   "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "index.js"
-    },
+  
     {
       "source": "/api/v1/token",
       "destination": "index.js"
@@ -20,7 +17,7 @@
       "destination": "index.js"
     },
     {
-      "source": "/api/v1/send-mail",
+      "source": "/api/v1/sendmail",
       "destination": "index.js"
     }
   ],
@@ -110,66 +107,12 @@
       ]
     },
     {
-      "source": "/api/v1/send-mail",
+      "source": "/api/v1/sendmail",
       "headers": [
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "http://localhost:4200"
-        },
-        {
-          "key": "Access-Control-Allow-Methods",
-          "value": "GET, POST, PUT, DELETE"
-        },
-        {
-          "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type, Authorization"
-        },
-        {
-          "key": "Access-Control-Allow-Credentials",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "source": "/api/v1/send-mail",
-      "headers": [
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "https://khoka.co"
-        },
-        {
-          "key": "Access-Control-Allow-Methods",
-          "value": "GET, POST, PUT, DELETE"
-        },
-        {
-          "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type, Authorization"
-        },
-        {
-          "key": "Access-Control-Allow-Credentials",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "source": "/api/v1/send-mail",
-      "headers": [
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "https://khoka-dev.web.app/"
-        },
-        {
-          "key": "Access-Control-Allow-Methods",
-          "value": "GET, POST, PUT, DELETE"
-        },
-        {
-          "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type, Authorization"
-        },
-        {
-          "key": "Access-Control-Allow-Credentials",
-          "value": "true"
-        }
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+        { "key": "Access-Control-Allow-Credentials", "value": "true" }
       ]
     }
   ]
