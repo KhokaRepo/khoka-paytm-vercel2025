@@ -205,7 +205,7 @@ app.post('/api/v1/token', async (req, res) => {
                     mid,
                     websiteName: "DEFAULT",
                     orderId,
-                    callbackUrl: `https://securegw.paytm.in/paytmCallback?ORDER_ID=${orderId}`,
+                    callbackUrl: `https://securegw.paytm.in/theia/paytmCallback?ORDER_ID=${orderId}`,
                     txnAmount: {
                         value: orderAmount,
                         currency: "INR"
