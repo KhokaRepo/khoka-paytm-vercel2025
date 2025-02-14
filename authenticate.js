@@ -1,4 +1,5 @@
-const { auth, signInWithEmailAndPassword } = require('./firebase'); // Adjust the path as needed
+const { auth, realtimeDb ,signInWithEmailAndPassword } = require('./firebase'); // Adjust the path as needed
+const { ref, push } = require("firebase/database");
 require('dotenv').config();
 const email = process.env.EMAIL;
 const password = process.env.PASSWORD;
@@ -19,4 +20,18 @@ const authenticateUser = async (email, password) => {
   }
 };
 
-module.exports = { authenticateUser, email, password, mids, mkeys, midp, mkeyp, mailEmail, mailPassword };
+// Initialize Realtime Database
+const storeTransactionLog = async (data) => {
+  try {
+    const user = await authenticateUser(email, password);
+    if (user) {
+      const transactionRef = ref(realtimeDb, 'TRANSACTIONLOG/iitguwahati');
+      await push(transactionRef, data);
+      console.log('Transaction log stored successfully');
+    }
+  } catch (error) {
+    console.error('Error storing transaction log:', error);
+  }
+};
+
+module.exports = { authenticateUser, email, password, mids, mkeys, midp, mkeyp, mailEmail, mailPassword , storeTransactionLog};

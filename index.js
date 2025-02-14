@@ -1,7 +1,7 @@
 const express = require("express");
-const { db } = require('./firebase');
+const { db , realtimeDb} = require('./firebase');
 const { collection, getDocs } = require('firebase/firestore/lite');
-const { authenticateUser, email, password, mailEmail, mailPassword, mids, mkeys, midp, mkeyp } = require('./authenticate');
+const { authenticateUser, email, password, mailEmail, mailPassword, mids, mkeys, midp, mkeyp ,storeTransactionLog} = require('./authenticate');
 const bodyParser = require("body-parser");
 const https = require('https');
 const PaytmChecksum = require('paytmchecksum');
@@ -193,7 +193,7 @@ app.post('/api/v1/token', async (req, res) => {
         }
 
         const { auth: authKey, orderId, orderAmount, userId, mobile, name } = req.body;
-        console.log('serverData' + serverData)
+        // console.log('serverData' + serverData)
         if (serverData.AUTH && serverData.AUTH === authKey) {
             if (!orderId || !orderAmount || !userId) {
                 return res.status(400).json({ error: "Missing required fields" });
@@ -205,7 +205,7 @@ app.post('/api/v1/token', async (req, res) => {
                     mid,
                     websiteName: "DEFAULT",
                     orderId,
-                    callbackUrl: `https://securegw.paytm.in/theia/paytmCallback?ORDER_ID=${orderId}`,
+                    callbackUrl:`https://khoka.co/paytm`, //`https://securegw.paytm.in/theia/paytmCallback?ORDER_ID=${orderId}`,
                     txnAmount: {
                         value: orderAmount,
                         currency: "INR"
@@ -243,6 +243,16 @@ app.post('/api/v1/token', async (req, res) => {
                     post_res.on('data', chunk => data += chunk);
                     post_res.on('end', () => resolve(data));
                 });
+
+                // Capture Log in firebase
+                storeTransactionLog({
+                    details:{
+                        paytmParams
+                    }, 
+                    Event: 'Token Generated',
+                    status: "Success",
+                    timestamp: new Date().toISOString()
+                  });
 
                 post_req.on('error', reject);
                 post_req.write(post_data);

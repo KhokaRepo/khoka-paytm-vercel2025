@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 const { initializeApp } = require('firebase/app');
 const { getFirestore } = require('firebase/firestore/lite');
-const { getDatabase } = require('firebase/database');
+const { getDatabase, } = require("firebase/database");
 const { getAuth, signInWithEmailAndPassword } = require('firebase/auth');
 
 // TODO: Add SDKs for Firebase products that you want to use
@@ -10,14 +10,13 @@ const { getAuth, signInWithEmailAndPassword } = require('firebase/auth');
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyDV8mcmbnioCoS1kz9EXKT6Ep_k2frjTEo",
-  authDomain: "khoka-rentals-production.firebaseapp.com",
-  databaseURL: "https://khoka-rentals-production-default-rtdb.firebaseio.com",
-  projectId: "khoka-rentals-production",
-  storageBucket: "khoka-rentals-production.appspot.com",
-  messagingSenderId: "645730438029",
-  appId: "1:645730438029:web:dfb70a1c73dbf6203f0bc4",
-  measurementId: "G-P9YRSYGX5N"
+  apiKey: "AIzaSyADoXeVFy_AtPW5k8eGOv2jdgzRGF0aNjI",
+  authDomain: "khoka-dev.firebaseapp.com",
+  databaseURL: "https://khoka-dev-default-rtdb.firebaseio.com",
+  projectId: "khoka-dev",
+  storageBucket: "khoka-dev.firebasestorage.app",
+  messagingSenderId: "901819154799",
+  appId: "1:901819154799:web:97f1cb8c6c2b0fcf31a89a"
 };
 
 // Initialize Firebase
