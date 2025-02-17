@@ -1,7 +1,7 @@
 const express = require("express");
-const { db } = require('./service/firebase');
+const { db,realtimeDb } = require('./service/firebase');
 const { collection, getDocs } = require('firebase/firestore/lite');
-const { authenticateUser, email, password, mids, mkeys, midp, mkeyp, storeTransactionLog } = require('./service/authenticate');
+const { authenticateUser, email, password, mids, mkeys, midp, mkeyp, storeTransactionLog ,mailEmail, mailPassword,getUserByUID} = require('./service/authenticate');
 const bodyParser = require("body-parser");
 const https = require('https');
 const PaytmChecksum = require('paytmchecksum');
@@ -10,12 +10,22 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 const cors = require('cors');
 const formidable = require('formidable')
-const { fetchVehicleById, createBookingDetailsAfterSuccessful } = require('./service/realtime');
-const {sendmail} = require('./service/mailer')
+const nodemailer = require('nodemailer');
+const { ref,get, update ,child} = require("firebase/database");
 
 const isProd = true;
 let mid = mids;
 let mkey = mkeys;
+
+const transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    auth: {
+        user: mailEmail, // Replace with your email
+        pass: mailPassword, // Replace with your app-specific password
+    },
+});
 
 // Middleware
 // app.use(cors);
@@ -235,20 +245,6 @@ app.post('/api/v1/token', async (req, res) => {
         console.error("Error processing payment:", error);
         res.status(500).json({ error: "Internal Server Error" });
     }
-});
-
-app.post('/api/v1/callback', (req, res) => {
-    const form = new formidable.IncomingForm();
-
-    form.parse(req, (err, fields) => { 
-        if (err) {
-            console.error("Form parsing error:", err);
-            return res.status(400).json({ error: "Form parsing failed" });
-        }
-        console.log("Received fields:", fields);
-        
-        res.status(200).json({ message: "Callback received", data: fields });
-    });
 });
 
 app.post('/api/v1/redirect',  async (req, res) => {
@@ -590,7 +586,6 @@ app.post('/api/v1/redirect',  async (req, res) => {
      
 });
 
-
 // Authenticate Stage User and Process Payment
 app.post('/api/v1/stage_token', async (req, res) => {
     try {
@@ -677,6 +672,484 @@ app.post('/api/v1/stage_token', async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
+
+const DB_PATHS = {
+    LOCATIONS: "LOCATIONS",
+    VEHICLE_TYPES: "VEHICLETYPES",
+    PLANS: "PLANS",
+    VEHICLES: "VEHICLES",
+    SERVICES: "SERVICES",
+    BANNER_PHOTO: "BANNERPHOTO",
+    BOOKINGS: "BOOKINGS",
+    CANCELLATION: "CANCELLATION",
+    TRANSACTIONS: "TRANSACTIONS",
+    SERVER_STATUS: "SERVER_STATUS",
+    NOTIFICATIONS: "NOTIFICATIONS"
+};
+
+async function createOrUpdateBookingAttributes(bookingId, userId, updateObject, userLocation) {
+    try {
+        if (!bookingId || !userId || !updateObject || !userLocation) {
+            throw new Error("Missing required parameters.");
+        }
+        const userlocation = userLocation.replace(/\s+/g, '').toLowerCase();
+        const locationPath = `${DB_PATHS.BOOKINGS}/${userlocation}/${userId}/${bookingId}`;
+        const dbRef = ref(realtimeDb, locationPath);
+        await update(dbRef, updateObject);
+        console.log("Ticket updated successfully.");
+        return { success: true, message: "Ticket updated successfully." };
+    } catch (error) {
+        console.error("Error updating Ticket:", error.message);
+        return { success: false, message: "Error updating Ticket.", error };
+    }
+}
+
+async function updateTransactions(uid, orderId, transactionUpdateObject, userLocation) {
+    try {
+        if (!uid || !orderId || !transactionUpdateObject || !userLocation) {
+            throw new Error("Missing required parameters.");
+        }
+        const userlocation = userLocation.replace(/\s+/g, "").toLowerCase();
+        const locationPath = `${DB_PATHS.TRANSACTIONS}/${userlocation}/${uid}/${orderId}`;
+        const dbRef = ref(realtimeDb, locationPath);
+
+        await update(dbRef, transactionUpdateObject);
+        console.log("Transaction Status updated successfully.");
+
+        return { success: true, message: "Transaction Status updated successfully." };
+    } catch (error) {
+        console.error("Transaction Error updating status:", error.message);
+        return { success: false, message: "Transaction Error updating status.", error };
+    }
+}
+
+async function updateAvailableVehiclesAttributes(updates, userId, userLocation, vid) {
+    try {
+        if (!updates || !userId || !userLocation || !vid) {
+            throw new Error("Missing required parameters.");
+        }
+        const userlocation = userLocation.replace(/\s+/g, "").toLowerCase();
+        const locationPath = `${DB_PATHS.VEHICLES}/${userlocation}/${vid}`;
+        const dbRef = ref(realtimeDb, locationPath);
+
+        await update(dbRef, updates);
+        console.log("Vehicle Update successful.");
+
+        return { success: true, message: "Vehicle Update successful." };
+    } catch (error) {
+        console.error("Error updating Vehicle attributes:", error.message);
+        return { success: false, message: "Error updating Vehicle attributes.", error };
+    }
+}
+
+async function fetchVehicleById(userLocation, vehicleId) {
+    try {
+
+        if (!userLocation || !vehicleId) {
+            throw new Error("User location and vehicle ID are required.");
+        }
+
+        const userlocation = userLocation.replace(/\s+/g, '').toLowerCase();
+        const vehiclePath = `${DB_PATHS.VEHICLES}/${userlocation}/${vehicleId}`; // Path to specific vehicle
+        const dbRef = ref(realtimeDb);
+
+        let snapshot;
+        try {
+            snapshot = await get(child(dbRef, vehiclePath));
+        } catch (firebaseError) {
+            throw new Error(`Firebase read error: ${firebaseError.message}`);
+        }
+
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            return {
+                id: vehicleId,
+                booked: data.booked || 0,
+                date: data.date || "",
+                location: data.location || "",
+                remaining: data.remaining || 0,
+                title: data.title || "",
+                total: data.total || 0,
+                waiting: data.waiting || 0
+            };
+        } else {
+            console.warn(`Vehicle with ID ${vehicleId} not found.`);
+            return null;
+        }
+    } catch (error) {
+        console.error("Error fetching vehicle:", error.message);
+        return null;
+    }
+}
+
+async function createBookingDetailsAfterSuccessful(data, vehicleDetails, uid, location, userSelectedVehicleQuantity) {
+    try {
+       
+        await createTransactionDetailsAfterSuccessful(data, uid, location);
+        console.log("Transaction details created 5");
+
+
+        await removeVehicleAndUpdateBooking(vehicleDetails, data.ORDERID, uid, location, userSelectedVehicleQuantity, data);
+        console.log("Vehicle updated and booking modified 6");
+
+
+         //get user buy user id
+         getUserByUID(uid).then((userData) => {
+            if (userData) {
+                var status  ='PAYMENT';
+                if(data.STATUS !== 'TXN_SUCCESS'){
+                    if(data.STATUS === 'TXN_FAILURE'){
+                            status = 'FAILURE';
+                    } else if(data.STATUS === 'PENDING'){
+                        status = 'PENDING';
+                    }
+                    
+                }
+                 
+                const payload = {
+                    userName: userData.username, 
+                    email: userData.email, 
+                    status: status,
+                    orderAmount: data.TXNAMOUNT,
+                    orderID: data.ORDERID,
+                    transcationId: data.BANKTXNID, 
+                    bookingDate: data.TXNDATE
+                }
+                 
+                sendmailBE(payload)
+                console.log("Booking email sent 4");
+            }
+        });
+
+
+
+
+    } catch (error) {
+        console.error("Error in booking process:", error.message);
+    }
+}
+
+async function createTransactionDetailsAfterSuccessful(data, uid, location) {
+    try {
+        const updateTransactionObject = {
+            status: data.STATUS,    
+            transactiondate: getTransactionTime(),
+            transactiontime: data.TXNDATE,
+            transactionid: data.BANKTXNID,
+        };
+
+        await updateTransactions(
+            uid, data.ORDERID, updateTransactionObject, location
+        );
+
+
+    } catch (error) {
+        console.error("Error updating transaction:", error.message);
+    }
+}
+
+async function removeVehicleAndUpdateBooking(vehicleDetails_, orderId, uid, location, userSelectedVehicleQuantity, data) {
+    try {
+        const { remaining, booked, waiting } = vehicleDetails_;
+        if (remaining > 0) {
+            if(data.STATUS === 'TXN_SUCCESS'){
+                await UpdateVehicle(remaining, booked, waiting, true, vehicleDetails_.id, uid, location, userSelectedVehicleQuantity);
+            }   
+          
+            await updateBookingStatus(true, orderId, uid, location, data);
+        } else {
+            if(data.STATUS === 'TXN_SUCCESS'){
+                await UpdateVehicle(remaining, booked, waiting, false, vehicleDetails_.id, uid, location, userSelectedVehicleQuantity);
+            } 
+       
+            await updateBookingStatus(false, orderId, uid, location, data);
+        }
+    } catch (error) {
+        console.error("Error updating vehicle/booking:", error.message);
+    }
+}
+
+async function updateBookingStatus(isRemaining, orderId, uid, location, data) {
+    try {
+        var status = isRemaining ? "CONFIRMED" : "WAITING";
+        if(data.STATUS !== 'TXN_SUCCESS'){
+            if(data.STATUS === 'TXN_FAILURE'){
+                    status = 'FAILURE';
+            } else if(data.STATUS === 'PENDING'){
+                status = 'PENDING';
+            }
+            
+        }
+        const updateTicketData = {
+            status: status, // Status of the transaction
+            referenceid: data.BANKTXNID, // Bank transaction ID
+            ordercreatedate: new Date(data.TXNDATE).toISOString(), // Order timestamp
+        };
+        await createOrUpdateBookingAttributes(
+            orderId, uid, updateTicketData, location
+        );
+        console.log("updateBookingStatus 7");
+
+    } catch (error) {
+        console.error("Error updating booking status:", error.message);
+    }
+}
+
+async function UpdateVehicle(remaining, booked, waiting, isFromRemaining, vid, uid, location, userSelectedVehicleQuantity) {
+    try {
+        let remain = remaining;
+        let wait = waiting;
+        const vehicles = parseInt(userSelectedVehicleQuantity);
+
+        if (isFromRemaining) {
+            if (vehicles > 1) {
+                remain -= vehicles;
+                booked += vehicles;
+            } else {
+                remain -= 1;
+                booked += 1;
+            }
+        } else {
+            if (vehicles > 1) {
+                wait -= vehicles;
+                booked += vehicles;
+            } else {
+                wait -= 1;
+                booked += 1;
+            }
+        }
+
+        const payload = {
+            booked: booked,
+            remaining: remain,
+            waiting: wait,
+        };
+
+        await updateAvailableVehiclesAttributes(
+            payload, uid, location, vid
+        );
+        console.log("updateAvailableVehiclesAttributes 8 Done completed");
+
+        // Close checkout after delay
+        setTimeout(() => {
+            // closeCheckoutForAccount();
+        }, 1000);
+
+    } catch (error) {
+        console.error("Error updating vehicle:", error.message);
+    }
+}
+
+function getCurrentDate() {
+    const date = new Date();
+    const day = String(date.getDate()).padStart(2, '0'); // Get day
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Get month (0-based, so add 1)
+    const year = date.getFullYear(); // Get year
+    const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }); // Get time in 12-hour format
+
+    return `${day} ${month} ${year}, ${time}`;
+}
+
+function getTransactionTime() {
+    const date = new Date();
+    const day = String(date.getDate()).padStart(2, '0'); // Get day and pad with leading zero
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Get month in short format (e.g., Jan)
+    const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }); // Get time in 12-hour format
+    const year = date.getFullYear(); // Get year
+    return `${time}, ${day} ${month} ${year}`;
+}
+
+async function sendmail(payload, res) {
+
+    const subject = getSubject(payload.status, payload.orderID);
+    const body = getBody(payload.userName, payload.status, payload.orderID, payload.orderAmount,
+        payload.bookingDate, payload.bookingTime, payload.transcationId);
+
+    const mailOptions = {
+        from: mailEmail,
+        to: payload.emailemail,
+        subject: subject,
+        text: body,
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+        res.status(200).json({
+            status: "success",
+            code: 200,
+            message: "Email sent successfully",
+            data: {
+                payload
+            }
+        });
+    } catch (error) {
+        console.error('Error sending email:', error);
+        res.status(500).json({
+            status: "error",
+            code: 500,
+            message: "An unexpected error occurred",
+            error: error.message
+        });
+    }
+}
+
+async function sendmailBE(payload) {
+
+    const subject = getSubject(payload.status, payload.orderID);
+    const body = getBody(payload.userName, payload.status, payload.orderID, payload.orderAmount,
+        payload.bookingDate, payload.transcationId);
+
+    const mailOptions = {
+        from: mailEmail,
+        to: payload.email,
+        subject: subject,
+        text: body,
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+        // res.status(200).json({
+        //     status: "success",
+        //     code: 200,
+        //     message: "Email sent successfully",
+        //     data: {
+        //         userName,
+        //         orderID,
+        //         transcationId,
+        //         bookingDate,
+        //         bookingTime,
+        //         orderAmount
+        //     }
+        // });
+        console.error('Email sent successfully:', 200);
+    } catch (error) {
+        console.error('Error sending email:', error);
+        // res.status(500).json({
+        //     status: "error",
+        //     code: 500,
+        //     message: "An unexpected error occurred",
+        //     error: error.message
+        // });
+    }
+}
+
+
+/**
+ * Get the email subject based on the status and order ID.
+ * 
+ * @param {string} status - The status of the order (e.g., PAYMENT or CANCELED).
+ * @param {string} orderID - The order ID.
+ * @returns {string} - The subject of the email.
+ */
+function getSubject(status, orderID) {
+    if (status.toUpperCase() === 'PAYMENT') {
+        return `Your Order for Khoka Self Driving Order ID: ${orderID} has been successfully placed`;
+    }
+    if (status.toUpperCase() === 'CANCELED') {
+        return `Your Request to Cancel Khoka Self Driving Order ID: ${orderID} is being processed`;
+    }
+    if (status.toUpperCase() === 'FAILURE') {
+        return `Transaction Failed for Khoka Self Driving Order ID: ${orderID}`;
+    }
+    
+    if (status.toUpperCase() === 'PENDING') {
+        return `Your Payment for Khoka Self Driving Order ID: ${orderID} is in Progress`;
+    }
+    
+    return '';
+}
+
+/**
+ * Get the email body based on the user's name, status, and order ID.
+ * 
+ * @param {string} userName - The name of the user.
+ * @param {string} status - The status of the order (e.g., PAYMENT or CANCELED).
+ * @param {string} orderID - The order ID.
+ * @returns {string} - The body of the email.
+ */
+function getBody(userName, status, orderID, amount, bookingDate, transactionID) {
+    if (status.toUpperCase() === 'PAYMENT') {
+        return `Hi, ${userName},
+        
+Thank you for booking your Scooty at Khoka Self Driving! Your booking has been successfully placed, and the details are as follows:
+
+- Order ID: ${orderID}
+- Booking Amount: ₹${amount}
+- Booking Date: ${bookingDate}
+- Transaction ID: ${transactionID}
+
+Your ticket is currently being processed to assign a vehicle. We appreciate your patience during this time.
+
+Thank you for choosing Khoka Self Driving!
+
+For more information or assistance, feel free to contact us:
+- Mail ID: joinkhoka@gmail.com
+- Phone: +917415361977`;
+    }
+
+    if (status.toUpperCase() === 'CANCELED') {
+        return `Hi, ${userName},
+        
+We have received your request to cancel your booking, and the cancellation for the following order is being processed:
+
+- Order ID: ${orderID}
+- Booking Amount: ₹${amount}
+- Transaction ID: ${transactionID}
+
+As per our cancellation and refund policy, the refund process has been initiated. You will be notified via email or SMS once the refund is successfully processed. 
+
+Thank you for your understanding and for connecting with Khoka Self Driving!
+
+For more information or assistance, feel free to contact us:
+- Mail ID: joinkhoka@gmail.com
+- Phone: +917415361977`;
+    }
+    if (status.toUpperCase() === 'FAILURE') {
+        return `Hi, ${userName},
+    
+    We regret to inform you that your transaction has failed. Please find the details below:
+    
+    - Order ID: ${orderID}
+    - Booking Amount: ₹${amount}
+    - Transaction ID: ${transactionID}
+    
+    Possible reasons for failure:
+    - Insufficient balance
+    - Bank server issues
+    - Incorrect payment details
+    
+    You may retry the payment or use an alternative payment method. If the amount was deducted from your account, it will be refunded as per our standard refund policy.
+    
+    For any assistance, feel free to contact us:
+    - Mail ID: joinkhoka@gmail.com
+    - Phone: +917415361977
+    
+    Thank you for choosing Khoka Self Driving!`;
+    }
+    if (status.toUpperCase() === 'PENDING') {
+        return `Hi, ${userName},
+    
+    Your payment for the following order is currently in progress:
+    
+    - Order ID: ${orderID}
+    - Booking Amount: ₹${amount}
+    - Transaction ID: ${transactionID}
+    
+    Sometimes, payments take a little longer to process due to banking network delays. Please allow some time for the transaction to be completed. You will receive a confirmation once the payment status is updated.
+    
+    If the payment remains pending for an extended period, please check with your bank or reach out to our support team.
+    
+    For assistance, contact us:
+    - Mail ID: joinkhoka@gmail.com
+    - Phone: +917415361977
+    
+    Thank you for choosing Khoka Self Driving!`;
+    }
+    
+    
+    return '';
+}
+
 
 // 404 Handler
 app.use('*', (req, res) => {
