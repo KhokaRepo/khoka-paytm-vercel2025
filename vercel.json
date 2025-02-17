@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "includeFiles": ["service/**", "smpt/**"],
   "routes": [
     { "src": "/api/v1/token", "dest": "/index.js" },
     { "src": "/api/v1/query-transaction-status", "dest": "/index.js" },
