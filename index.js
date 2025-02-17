@@ -168,8 +168,8 @@ app.post('/api/v1/token', async (req, res) => {
                     mid,
                     websiteName: "DEFAULT",
                     orderId,
-                    // callbackUrl: `http://localhost:8080/api/v1/callback`,
-                    callbackUrl: `http://localhost:8080/api/v1/redirect?uid=${userId}&location=${userLocation}&vid=${vid}&qty=${qty}`,
+                    callbackUrl: `https://khoka-paytm-vercel2025-khokas-projects.vercel.app/api/v1/redirect?uid=${userId}&location=${userLocation}&vid=${vid}&qty=${qty}`,
+                    // callbackUrl: `http://localhost:8080/api/v1/redirect?uid=${userId}&location=${userLocation}&vid=${vid}&qty=${qty}`,
                     txnAmount: {
                         value: orderAmount,
                         currency: "INR"
