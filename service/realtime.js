@@ -1,6 +1,6 @@
 const { ref,get, update ,child} = require("firebase/database");
 const {realtimeDb} = require('./firebase');
-const {getUserByUID} = require('./authenticate');
+const {getUserByUID} = require('../authenticate');
 const {sendmailBE} =  require('./mailer')
 
 const DB_PATHS = {

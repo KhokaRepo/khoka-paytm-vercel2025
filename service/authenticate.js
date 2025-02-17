@@ -1,4 +1,4 @@
-const { auth, realtimeDb ,signInWithEmailAndPassword } = require('./firebase'); // Adjust the path as needed
+const { auth, realtimeDb ,signInWithEmailAndPassword } = require('./service/firebase'); // Adjust the path as needed
 const { ref, push } = require("firebase/database");
 const { getFirestore, doc, getDoc } = require("firebase/firestore"); 
 
