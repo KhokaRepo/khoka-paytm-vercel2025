@@ -1,5 +1,5 @@
 const nodemailer = require('nodemailer');
-const {mailEmail, mailPassword} =  require('../firebase/authenticate')
+const {mailEmail, mailPassword} =  require('../service/authenticate')
 
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',

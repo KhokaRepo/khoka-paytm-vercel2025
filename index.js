@@ -1,7 +1,7 @@
 const express = require("express");
-const { db } = require('./firebase/firebase');
+const { db } = require('./service/firebase');
 const { collection, getDocs } = require('firebase/firestore/lite');
-const { authenticateUser, email, password, mids, mkeys, midp, mkeyp, storeTransactionLog } = require('./firebase/authenticate');
+const { authenticateUser, email, password, mids, mkeys, midp, mkeyp, storeTransactionLog } = require('./service/authenticate');
 const bodyParser = require("body-parser");
 const https = require('https');
 const PaytmChecksum = require('paytmchecksum');
@@ -10,7 +10,7 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 const cors = require('cors');
 const formidable = require('formidable')
-const { fetchVehicleById, createBookingDetailsAfterSuccessful } = require('./firebase/realtime')
+const { fetchVehicleById, createBookingDetailsAfterSuccessful } = require('./service/realtime');
 const {sendmail} = require('./smpt/mailer')
 
 const isProd = true;

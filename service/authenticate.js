@@ -3,6 +3,7 @@ const { ref, push } = require("firebase/database");
 const { getFirestore, doc, getDoc } = require("firebase/firestore"); 
 
 require('dotenv').config();
+
 const email = process.env.EMAIL;
 const password = process.env.PASSWORD;
 const mids = process.env.MIDS;
