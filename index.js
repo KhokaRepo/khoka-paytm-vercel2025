@@ -311,7 +311,7 @@ app.post('/api/v1/redirect',  async (req, res) => {
                     } 
                     
                     else {
-                        console.error("Signature verification failed");
+                        console.log("Signature verification failed", location, vid);
                         fetchVehicleById(location, vid)
                             .then(vehicleDetails => {
                                 if (vehicleDetails) {
@@ -589,7 +589,6 @@ app.post('/api/v1/redirect',  async (req, res) => {
         });
      
 });
-
 
 
 // Authenticate Stage User and Process Payment

@@ -1,6 +1,6 @@
 const { ref,get, update ,child} = require("firebase/database");
 const {realtimeDb} = require('./firebase');
-const {getUserByUID} = require('../authenticate');
+const {getUserByUID} = require('./authenticate');
 const {sendmailBE} =  require('./mailer')
 
 const DB_PATHS = {
@@ -73,92 +73,74 @@ async function updateAvailableVehiclesAttributes(updates, userId, userLocation, 
 }
 
 
-async function fetchVehicleById(userLocation, vehicleId) {
+const fetchVehicleById = async (userLocation, vehicleId) => {
+    if (!userLocation || !vehicleId) throw new Error("User location and vehicle ID are required.");
+
+    const sanitizedLocation = userLocation.replace(/\s+/g, '').toLowerCase();
+    const vehiclePath = `${DB_PATHS.VEHICLES}/${sanitizedLocation}/${vehicleId}`;
+    
     try {
-
-        if (!userLocation || !vehicleId) {
-            throw new Error("User location and vehicle ID are required.");
-        }
-
-        const userlocation = userLocation.replace(/\s+/g, '').toLowerCase();
-        const vehiclePath = `${DB_PATHS.VEHICLES}/${userlocation}/${vehicleId}`; // Path to specific vehicle
-        const dbRef = ref(realtimeDb);
-
-        let snapshot;
-        try {
-            snapshot = await get(child(dbRef, vehiclePath));
-        } catch (firebaseError) {
-            throw new Error(`Firebase read error: ${firebaseError.message}`);
-        }
-
-        if (snapshot.exists()) {
-            const data = snapshot.val();
-            return {
-                id: vehicleId,
-                booked: data.booked || 0,
-                date: data.date || "",
-                location: data.location || "",
-                remaining: data.remaining || 0,
-                title: data.title || "",
-                total: data.total || 0,
-                waiting: data.waiting || 0
-            };
-        } else {
+        const snapshot = await get(child(ref(realtimeDb), vehiclePath));
+        if (!snapshot.exists()) {
             console.warn(`Vehicle with ID ${vehicleId} not found.`);
             return null;
         }
-    } catch (error) {
-        console.error("Error fetching vehicle:", error.message);
-        return null;
-    }
-}
 
-async function createBookingDetailsAfterSuccessful(data, vehicleDetails, uid, location, userSelectedVehicleQuantity) {
+        const data = snapshot.val();
+        return {
+            id: vehicleId,
+            booked: data.booked || 0,
+            date: data.date || "",
+            location: data.location || "",
+            remaining: data.remaining || 0,
+            title: data.title || "",
+            total: data.total || 0,
+            waiting: data.waiting || 0
+        };
+    } catch (error) {
+        console.error("Error fetching vehicle:", error);
+        throw error;
+    }
+};
+
+const createBookingDetailsAfterSuccessful = async (
+    data,
+    vehicleDetails,
+    uid,
+    location,
+    userSelectedVehicleQuantity
+) => {
     try {
-       
         await createTransactionDetailsAfterSuccessful(data, uid, location);
         console.log("Transaction details created 5");
-
 
         await removeVehicleAndUpdateBooking(vehicleDetails, data.ORDERID, uid, location, userSelectedVehicleQuantity, data);
         console.log("Vehicle updated and booking modified 6");
 
+        const userData = await getUserByUID(uid);
+        if (userData) {
+            const status = data.STATUS === "TXN_SUCCESS" ? "PAYMENT" : 
+                           data.STATUS === "TXN_FAILURE" ? "FAILURE" : 
+                           data.STATUS === "PENDING" ? "PENDING" : "UNKNOWN";
 
-         //get user buy user id
-         getUserByUID(uid).then((userData) => {
-            if (userData) {
-                var status  ='PAYMENT';
-                if(data.STATUS !== 'TXN_SUCCESS'){
-                    if(data.STATUS === 'TXN_FAILURE'){
-                            status = 'FAILURE';
-                    } else if(data.STATUS === 'PENDING'){
-                        status = 'PENDING';
-                    }
-                    
-                }
-                 
-                const payload = {
-                    userName: userData.username, 
-                    email: userData.email, 
-                    status: status,
-                    orderAmount: data.TXNAMOUNT,
-                    orderID: data.ORDERID,
-                    transcationId: data.BANKTXNID, 
-                    bookingDate: data.TXNDATE
-                }
-                 
-                sendmailBE(payload)
-                console.log("Booking email sent 4");
-            }
-        });
+            await sendmailBE({
+                userName: userData.username,
+                email: userData.email,
+                status,
+                orderAmount: data.TXNAMOUNT,
+                orderID: data.ORDERID,
+                transcationId: data.BANKTXNID,
+                bookingDate: data.TXNDATE
+            });
 
-
-
-
+            console.log("Booking email sent 4");
+        }
     } catch (error) {
-        console.error("Error in booking process:", error.message);
+        console.error("Error in booking process:", error);
+        throw error;
     }
-}
+};
+
 
 async function createTransactionDetailsAfterSuccessful(data, uid, location) {
     try {

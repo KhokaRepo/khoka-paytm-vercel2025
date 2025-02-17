@@ -1,5 +1,5 @@
 const nodemailer = require('nodemailer');
-const {mailEmail, mailPassword} =  require('../authenticate')
+const {mailEmail, mailPassword} =  require('./authenticate')
 
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
