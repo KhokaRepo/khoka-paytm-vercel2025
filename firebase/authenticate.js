@@ -1,5 +1,7 @@
 const { auth, realtimeDb ,signInWithEmailAndPassword } = require('./firebase'); // Adjust the path as needed
 const { ref, push } = require("firebase/database");
+const { getFirestore, doc, getDoc } = require("firebase/firestore"); 
+
 require('dotenv').config();
 const email = process.env.EMAIL;
 const password = process.env.PASSWORD;
@@ -9,6 +11,9 @@ const midp = process.env.MIDP;
 const mkeyp = process.env.MKEYP;
 const mailEmail = process.env.MAILEMAIL;
 const mailPassword = process.env.MAILPASSWORD;
+
+const db = getFirestore(); // Initialize Firestore
+
 const authenticateUser = async (email, password) => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -34,4 +39,25 @@ const storeTransactionLog = async (data) => {
   }
 };
 
-module.exports = { authenticateUser, email, password, mids, mkeys, midp, mkeyp, mailEmail, mailPassword , storeTransactionLog};
+
+async function getUserByUID(uid) {
+  try {
+    const userRef = doc(db, "USERS", uid); // Reference to the user's document
+    const userSnap = await getDoc(userRef);
+
+    if (userSnap.exists()) {
+      const userData = userSnap.data(); // Store data in a variable
+      // console.log("User Data:", userData);
+      return userData; // Return user data
+    } else {
+      console.log("No such user found!");
+      return null;
+    }
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    return null;
+  }
+}
+
+
+module.exports = { authenticateUser, email, password, mids, mkeys, midp, mkeyp, mailEmail, mailPassword , storeTransactionLog, getUserByUID};
