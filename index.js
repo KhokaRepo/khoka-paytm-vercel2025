@@ -12,7 +12,7 @@ const cors = require('cors');
 const formidable = require('formidable')
 const nodemailer = require('nodemailer');
 const { ref, update } = require("firebase/database");
-const functions = require('firebase-functions')
+
 
 const isProd = true;
 let mid = mids;
@@ -951,5 +951,3 @@ app.use('*', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port: ${PORT}`);
 });
-
-exports.api = functions.https.onRequest(app)
