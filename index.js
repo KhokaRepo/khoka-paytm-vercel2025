@@ -666,9 +666,9 @@ app.post('/api/v1/stage_token', async (req, res) => {
 });
 
 
-async function createBookingDetailsAfterSuccessful(data, uid, location) {
+function createBookingDetailsAfterSuccessful(data, uid, location) {
     try {
-        await createTransactionDetailsAfterSuccessful(data, uid, location);
+         createTransactionDetailsAfterSuccessful(data, uid, location);
         console.log("Transaction details created 1");
 
         var status = "CONFIRMED";
@@ -684,7 +684,7 @@ async function createBookingDetailsAfterSuccessful(data, uid, location) {
             referenceid: data.BANKTXNID, // Bank transaction ID
             ordercreatedate: new Date(data.TXNDATE).toISOString(), // Order timestamp
         };
-        await createOrUpdateBookingAttributes(
+         createOrUpdateBookingAttributes(
             data.ORDERID, uid, updateTicketData, location
         );
         console.log("updateBookingStatus 2");
@@ -695,7 +695,7 @@ async function createBookingDetailsAfterSuccessful(data, uid, location) {
     }
 }
 
-async function  createTransactionDetailsAfterSuccessful(data, uid, userLocation){
+function  createTransactionDetailsAfterSuccessful(data, uid, userLocation){
     try {
         const transactionUpdateObject = {
             status: data.STATUS,
@@ -710,10 +710,14 @@ async function  createTransactionDetailsAfterSuccessful(data, uid, userLocation)
         const locationPath = `${DB_PATHS.TRANSACTIONS}/${userlocation}/${uid}/${data.ORDERID}`;
         const dbRef = ref(realtimeDb, locationPath);
 
-        await update(dbRef, transactionUpdateObject);
-        console.log("Transaction Status updated successfully.");
+        update(dbRef, transactionUpdateObject).then(val =>{
+            console.log("Transaction Status updated successfully.");
+        }).catch(err=>{
+            console.error("Error updating transaction:", err.message);
+        });
+        
 
-        return { success: true, message: "Transaction Status updated successfully." };
+   
 
     } catch (error) {
         console.error("Error updating transaction:", error.message);
@@ -722,7 +726,7 @@ async function  createTransactionDetailsAfterSuccessful(data, uid, userLocation)
 
 
 
-async function createOrUpdateBookingAttributes (bookingId, userId, updateObject, userLocation) {
+ function createOrUpdateBookingAttributes (bookingId, userId, updateObject, userLocation) {
     // async function createOrUpdateBookingAttributes(bookingId, userId, updateObject, userLocation) {
     try {
         if (!bookingId || !userId || !updateObject || !userLocation) {
@@ -731,12 +735,13 @@ async function createOrUpdateBookingAttributes (bookingId, userId, updateObject,
         const userlocation = userLocation.replace(/\s+/g, '').toLowerCase();
         const locationPath = `${DB_PATHS.BOOKINGS}/${userlocation}/${userId}/${bookingId}`;
         const dbRef = ref(realtimeDb, locationPath);
-        await update(dbRef, updateObject);
-        console.log("Ticket updated successfully.");
-        return { success: true, message: "Ticket updated successfully." };
+        update(dbRef, updateObject).then((val)=>{
+            console.log("Ticket updated successfully.");
+        }).catch(err=>{
+            console.error("Error updating Ticket:", err.message);
+        });
     } catch (error) {
         console.error("Error updating Ticket:", error.message);
-        return { success: false, message: "Error updating Ticket.", error };
     }
 }
 
