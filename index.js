@@ -1,7 +1,7 @@
 const express = require("express");
-const { db,realtimeDb } = require('./service/firebase');
-const { collection, getDocs , query,  where} = require('firebase/firestore/lite');
-const { authenticateUser, email, password, mids, mkeys, midp, mkeyp, storeTransactionLog ,mailEmail, mailPassword,getUserByUID} = require('./service/authenticate');
+const { db, realtimeDb } = require('./service/firebase');
+const { collection, getDocs } = require('firebase/firestore/lite');
+const { authenticateUser, email, password, mids, mkeys, midp, mkeyp, storeTransactionLog, mailEmail, mailPassword } = require('./service/authenticate');
 const bodyParser = require("body-parser");
 const https = require('https');
 const PaytmChecksum = require('paytmchecksum');
@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 8080;
 const cors = require('cors');
 const formidable = require('formidable')
 const nodemailer = require('nodemailer');
-const { ref,get, update ,child} = require("firebase/database");
+const { ref, update } = require("firebase/database");
 const functions = require('firebase-functions')
 
 const isProd = true;
@@ -43,7 +43,7 @@ const transporter = nodemailer.createTransport({
 // Middleware
 // app.use(cors);
 app.use(bodyParser.json());
-// app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 // Root Endpoint
@@ -82,9 +82,9 @@ app.post('/api/v1/sendmail', async (req, res) => {
     const payload = {
         userName, email, status, orderAmount, orderID, transcationId, bookingDate, bookingTime
     }
-     
-   await sendmail(payload, res);
-    
+
+    await sendmail(payload, res);
+
 });
 
 // Get All Users
@@ -167,7 +167,7 @@ app.post('/api/v1/token', async (req, res) => {
         const credentialsSnapshot = await getDocs(usersRef);
         const credentialDoc = credentialsSnapshot.docs.find(doc => doc.id === 'PAYTM');
         const serverData = credentialDoc ? credentialDoc.data() : null;
-       
+
 
         if (!serverData || serverData.BLOCK) {
             return res.status(403).json({ error: 'Access blocked by server' });
@@ -261,75 +261,74 @@ app.post('/api/v1/token', async (req, res) => {
     }
 });
 
-app.post('/api/v1/redirect',  async (req, res) => {
+app.post('/api/v1/redirect', async (req, res) => {
     // try {
-        const user =await authenticateUser(email, password);
-        if (!user) {
-            return res.status(403).json({ error: 'User authentication failed' });
-        } 
+    const user = await authenticateUser(email, password);
+    if (!user) {
+        return res.status(403).json({ error: 'User authentication failed' });
+    }
 
-        const form = new formidable.IncomingForm();
+    const form = new formidable.IncomingForm();
 
-        form.parse(req, async (err, fields) => {
+    form.parse(req, async (err, fields) => {
 
-            console.log('fields Redirect page invoke - 1')
+        console.log('fields Redirect page invoke - 1')
+        try {
+            const uid = req.query.uid || "Unknown";  // Extract UID from query params
+            const location = req.query.location || "Unknown";  // Extract location from query params
+
+    
+            if (!fields || typeof fields !== 'object') {
+                throw new Error('Invalid form data');
+            }
+
+            const body = Object.fromEntries(
+                Object.entries(fields || {}).map(([key, value]) => [key, value ? value[0] : null])
+            );
+
+            console.log('Transaction Data:', body);
+
+            // Checksum Verification
+            const paytmChecksum = fields.CHECKSUMHASH ? fields.CHECKSUMHASH[0] : null;
+            if (!paytmChecksum) throw new Error('Missing CHECKSUMHASH');
+
+            if (fields.CHECKSUMHASH) delete fields.CHECKSUMHASH[0];
+            let isVerifySignature = false;
+
             try {
-                const uid = req.query.uid || "Unknown";  // Extract UID from query params
-                const location = req.query.location || "Unknown";  // Extract location from query params
-                const vid = req.query.vid || "Unknown";
-                const userSelectedVehicleQuantity = req.query.qty || "Unknown";
-
-                if (!fields || typeof fields !== 'object') {
-                    throw new Error('Invalid form data');
+                isVerifySignature = PaytmChecksum.verifySignature(body, mkeyp, paytmChecksum);
+            } catch (error) {
+                console.error("Signature verification failed:", error.message);
+                isVerifySignature = false;
+            }
+            try {
+                if (isVerifySignature) {
+                    createBookingDetailsAfterSuccessful(body, uid, location);
                 }
 
-                const body = Object.fromEntries(
-                    Object.entries(fields || {}).map(([key, value]) => [key, value ? value[0] : null])
-                );
-
-                console.log('Transaction Data:', body);
-
-                // Checksum Verification
-                const paytmChecksum = fields.CHECKSUMHASH ? fields.CHECKSUMHASH[0] : null;
-                if (!paytmChecksum) throw new Error('Missing CHECKSUMHASH');
-
-                if (fields.CHECKSUMHASH) delete fields.CHECKSUMHASH[0];
-                let isVerifySignature = false;
-
-                try {
-                    isVerifySignature = PaytmChecksum.verifySignature(body, mkeyp, paytmChecksum);
-                } catch (error) {
-                    console.error("Signature verification failed:", error.message);
-                    isVerifySignature = false;
+                else {
+                    console.log("Signature verification failed", location);
+                    createBookingDetailsAfterSuccessful(body, uid, location);
                 }
-                try {
-                    if (isVerifySignature) {
-                     createBookingDetailsAfterSuccessful(body, uid, location);             
-                    } 
-                    
-                    else {
-                        console.log("Signature verification failed", location, vid);
-                        createBookingDetailsAfterSuccessful(body, uid, location);
-                    } 
-                } catch (error) {
-                 console.log('error', error)
-                }
+            } catch (error) {
+                console.log('error', error)
+            }
 
-                // Status Handling
-                const status = body.STATUS || "UNKNOWN";
-                const statusMessages = {
-                    "TXN_SUCCESS": { message: "Payment Successful!", color: "var(--green)", redirect: "http://localhost:4200/account" },
-                    "TXN_FAILURE": { message: "Payment Failed. Try Again.", color: "var(--waiting-background)", redirect: "http://localhost:4200/splash" },
-                    "PENDING": { message: "Transaction Pending. Please Wait.", color: "var(--yellow)", redirect: "http://localhost:4200/account" },
-                    "TXN_CANCELLED": { message: "Transaction Cancelled.", color: "var(--peach)", redirect: "http://localhost:4200/splash" },
-                    "TXN_REFUNDED": { message: "Transaction Refunded.", color: "var(--purple)", redirect: "http://localhost:4200/splash" },
-                    "UNKNOWN": { message: "Unexpected Response from Payment Gateway.", color: "var(--grey-title)", redirect: "http://localhost:4200/splash" }
-                };
+            // Status Handling
+            const status = body.STATUS || "UNKNOWN";
+            const statusMessages = {
+                "TXN_SUCCESS": { message: "Payment Successful!", color: "var(--green)", redirect: "http://localhost:4200/account" },
+                "TXN_FAILURE": { message: "Payment Failed. Try Again.", color: "var(--waiting-background)", redirect: "http://localhost:4200/splash" },
+                "PENDING": { message: "Transaction Pending. Please Wait.", color: "var(--yellow)", redirect: "http://localhost:4200/account" },
+                "TXN_CANCELLED": { message: "Transaction Cancelled.", color: "var(--peach)", redirect: "http://localhost:4200/splash" },
+                "TXN_REFUNDED": { message: "Transaction Refunded.", color: "var(--purple)", redirect: "http://localhost:4200/splash" },
+                "UNKNOWN": { message: "Unexpected Response from Payment Gateway.", color: "var(--grey-title)", redirect: "http://localhost:4200/splash" }
+            };
 
-                const { message, color, redirect } = statusMessages[status];
+            const { message, color, redirect } = statusMessages[status];
 
-                // Send HTML Response with Auto-Redirect
-                const htmlResponse = `
+            // Send HTML Response with Auto-Redirect
+            const htmlResponse = `
    
                 <!DOCTYPE html>
                 <html lang="en">
@@ -567,16 +566,16 @@ app.post('/api/v1/redirect',  async (req, res) => {
                 </body>
             </html>
             `;
-                res.writeHead(200, { 'Content-Type': 'text/html' });
-                res.end(htmlResponse);
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(htmlResponse);
 
-            } catch (error) {
-                console.error("Error processing request:", error.message);
-                res.writeHead(400, { 'Content-Type': 'text/html' });
-                res.end(`<h1 style="color: var(--waiting-background);">Error</h1><p>${error.message}</p>`);
-            }
-        });
-     
+        } catch (error) {
+            console.error("Error processing request:", error.message);
+            res.writeHead(400, { 'Content-Type': 'text/html' });
+            res.end(`<h1 style="color: var(--waiting-background);">Error</h1><p>${error.message}</p>`);
+        }
+    });
+
 });
 
 // Authenticate Stage User and Process Payment
@@ -667,28 +666,28 @@ app.post('/api/v1/stage_token', async (req, res) => {
 });
 
 
-const  createBookingDetailsAfterSuccessful = async (data, uid, location) => {
+async function createBookingDetailsAfterSuccessful(data, uid, location) {
     try {
         await createTransactionDetailsAfterSuccessful(data, uid, location);
         console.log("Transaction details created 1");
 
-            var status = "CONFIRMED";
-            if(data.STATUS !== 'TXN_SUCCESS'){
-                if(data.STATUS === 'TXN_FAILURE'){
-                        status = 'FAILURE';
-                } else if(data.STATUS === 'PENDING'){
-                    status = 'PENDING';
-                }
+        var status = "CONFIRMED";
+        if (data.STATUS !== 'TXN_SUCCESS') {
+            if (data.STATUS === 'TXN_FAILURE') {
+                status = 'FAILURE';
+            } else if (data.STATUS === 'PENDING') {
+                status = 'PENDING';
             }
-            const updateTicketData = {
-                status: status, // Status of the transaction
-                referenceid: data.BANKTXNID, // Bank transaction ID
-                ordercreatedate: new Date(data.TXNDATE).toISOString(), // Order timestamp
-            };
-            await createOrUpdateBookingAttributes(
-                data.ORDERID, uid, updateTicketData, location
-            );
-            console.log("updateBookingStatus 2");
+        }
+        const updateTicketData = {
+            status: status, // Status of the transaction
+            referenceid: data.BANKTXNID, // Bank transaction ID
+            ordercreatedate: new Date(data.TXNDATE).toISOString(), // Order timestamp
+        };
+        await createOrUpdateBookingAttributes(
+            data.ORDERID, uid, updateTicketData, location
+        );
+        console.log("updateBookingStatus 2");
 
 
     } catch (error) {
@@ -696,53 +695,51 @@ const  createBookingDetailsAfterSuccessful = async (data, uid, location) => {
     }
 }
 
-const  createTransactionDetailsAfterSuccessful = async (data, uid, userLocation) => {
+async function  createTransactionDetailsAfterSuccessful(data, uid, userLocation){
     try {
         const transactionUpdateObject = {
-            status: data.STATUS,    
+            status: data.STATUS,
             transactiondate: getTransactionTime(),
             transactiontime: data.TXNDATE,
             transactionid: data.BANKTXNID,
         };
+        if (!uid || !data.ORDERID || !transactionUpdateObject || !userLocation) {
+            throw new Error("Missing required parameters.");
+        }
+        const userlocation = userLocation.replace(/\s+/g, "").toLowerCase();
+        const locationPath = `${DB_PATHS.TRANSACTIONS}/${userlocation}/${uid}/${data.ORDERID}`;
+        const dbRef = ref(realtimeDb, locationPath);
 
-        
-            if (!uid || !data.ORDERID || !transactionUpdateObject || !userLocation) {
-                throw new Error("Missing required parameters.");
-            }
-            const userlocation = userLocation.replace(/\s+/g, "").toLowerCase();
-            const locationPath = `${DB_PATHS.TRANSACTIONS}/${userlocation}/${uid}/${data.ORDERID}`;
-            const dbRef = ref(realtimeDb, locationPath);
-    
-            await update(dbRef, transactionUpdateObject);
-            console.log("Transaction Status updated successfully.");
-    
-            return { success: true, message: "Transaction Status updated successfully." };
+        await update(dbRef, transactionUpdateObject);
+        console.log("Transaction Status updated successfully.");
+
+        return { success: true, message: "Transaction Status updated successfully." };
 
     } catch (error) {
         console.error("Error updating transaction:", error.message);
     }
 }
 
- 
 
-const  createOrUpdateBookingAttributes = async (bookingId, userId, updateObject, userLocation) => {
+
+async function createOrUpdateBookingAttributes (bookingId, userId, updateObject, userLocation) {
     // async function createOrUpdateBookingAttributes(bookingId, userId, updateObject, userLocation) {
-        try {
-            if (!bookingId || !userId || !updateObject || !userLocation) {
-                throw new Error("Missing required parameters.");
-            }
-            const userlocation = userLocation.replace(/\s+/g, '').toLowerCase();
-            const locationPath = `${DB_PATHS.BOOKINGS}/${userlocation}/${userId}/${bookingId}`;
-            const dbRef = ref(realtimeDb, locationPath);
-            await update(dbRef, updateObject);
-            console.log("Ticket updated successfully.");
-            return { success: true, message: "Ticket updated successfully." };
-        } catch (error) {
-            console.error("Error updating Ticket:", error.message);
-            return { success: false, message: "Error updating Ticket.", error };
+    try {
+        if (!bookingId || !userId || !updateObject || !userLocation) {
+            throw new Error("Missing required parameters.");
         }
+        const userlocation = userLocation.replace(/\s+/g, '').toLowerCase();
+        const locationPath = `${DB_PATHS.BOOKINGS}/${userlocation}/${userId}/${bookingId}`;
+        const dbRef = ref(realtimeDb, locationPath);
+        await update(dbRef, updateObject);
+        console.log("Ticket updated successfully.");
+        return { success: true, message: "Ticket updated successfully." };
+    } catch (error) {
+        console.error("Error updating Ticket:", error.message);
+        return { success: false, message: "Error updating Ticket.", error };
     }
- 
+}
+
 
 function getTransactionTime() {
     const date = new Date();
@@ -845,11 +842,11 @@ function getSubject(status, orderID) {
     if (status.toUpperCase() === 'FAILURE') {
         return `Transaction Failed for Khoka Self Driving Order ID: ${orderID}`;
     }
-    
+
     if (status.toUpperCase() === 'PENDING') {
         return `Your Payment for Khoka Self Driving Order ID: ${orderID} is in Progress`;
     }
-    
+
     return '';
 }
 
@@ -939,8 +936,8 @@ For more information or assistance, feel free to contact us:
     
     Thank you for choosing Khoka Self Driving!`;
     }
-    
-    
+
+
     return '';
 }
 
