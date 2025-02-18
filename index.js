@@ -1,6 +1,6 @@
 const express = require("express");
 const { db,realtimeDb } = require('./service/firebase');
-const { collection, getDocs } = require('firebase/firestore/lite');
+const { collection, getDocs , query,  where} = require('firebase/firestore/lite');
 const { authenticateUser, email, password, mids, mkeys, midp, mkeyp, storeTransactionLog ,mailEmail, mailPassword,getUserByUID} = require('./service/authenticate');
 const bodyParser = require("body-parser");
 const https = require('https');
@@ -154,6 +154,7 @@ app.post('/api/v1/token', async (req, res) => {
         const credentialsSnapshot = await getDocs(usersRef);
         const credentialDoc = credentialsSnapshot.docs.find(doc => doc.id === 'PAYTM');
         const serverData = credentialDoc ? credentialDoc.data() : null;
+       
 
         if (!serverData || serverData.BLOCK) {
             return res.status(403).json({ error: 'Access blocked by server' });
@@ -687,7 +688,10 @@ const DB_PATHS = {
     NOTIFICATIONS: "NOTIFICATIONS"
 };
 
-async function createOrUpdateBookingAttributes(bookingId, userId, updateObject, userLocation) {
+
+
+const  createOrUpdateBookingAttributes = async (bookingId, userId, updateObject, userLocation) => {
+// async function createOrUpdateBookingAttributes(bookingId, userId, updateObject, userLocation) {
     try {
         if (!bookingId || !userId || !updateObject || !userLocation) {
             throw new Error("Missing required parameters.");
@@ -704,7 +708,8 @@ async function createOrUpdateBookingAttributes(bookingId, userId, updateObject, 
     }
 }
 
-async function updateTransactions(uid, orderId, transactionUpdateObject, userLocation) {
+const  updateTransactions = async (uid, orderId, transactionUpdateObject, userLocation) => {
+// async function updateTransactions(uid, orderId, transactionUpdateObject, userLocation) {
     try {
         if (!uid || !orderId || !transactionUpdateObject || !userLocation) {
             throw new Error("Missing required parameters.");
@@ -723,7 +728,9 @@ async function updateTransactions(uid, orderId, transactionUpdateObject, userLoc
     }
 }
 
-async function updateAvailableVehiclesAttributes(updates, userId, userLocation, vid) {
+
+const  updateAvailableVehiclesAttributes = async (updates, userId, userLocation, vid) => {
+// async function updateAvailableVehiclesAttributes(updates, userId, userLocation, vid) {
     try {
         if (!updates || !userId || !userLocation || !vid) {
             throw new Error("Missing required parameters.");
@@ -742,7 +749,8 @@ async function updateAvailableVehiclesAttributes(updates, userId, userLocation, 
     }
 }
 
-async function fetchVehicleById(userLocation, vehicleId) {
+const  fetchVehicleById = async (userLocation, vehicleId) => {
+// async function fetchVehicleById(userLocation, vehicleId) {
     try {
 
         if (!userLocation || !vehicleId) {
@@ -782,7 +790,8 @@ async function fetchVehicleById(userLocation, vehicleId) {
     }
 }
 
-async function createBookingDetailsAfterSuccessful(data, vehicleDetails, uid, location, userSelectedVehicleQuantity) {
+const  createBookingDetailsAfterSuccessful = async (data, vehicleDetails, uid, location, userSelectedVehicleQuantity) => {
+// async function createBookingDetailsAfterSuccessful(data, vehicleDetails, uid, location, userSelectedVehicleQuantity) {
     try {
        
         await createTransactionDetailsAfterSuccessful(data, uid, location);
@@ -829,7 +838,8 @@ async function createBookingDetailsAfterSuccessful(data, vehicleDetails, uid, lo
     }
 }
 
-async function createTransactionDetailsAfterSuccessful(data, uid, location) {
+const  createTransactionDetailsAfterSuccessful = async (data, uid, location) => {
+// async function createTransactionDetailsAfterSuccessful(data, uid, location) {
     try {
         const updateTransactionObject = {
             status: data.STATUS,    
@@ -848,7 +858,9 @@ async function createTransactionDetailsAfterSuccessful(data, uid, location) {
     }
 }
 
-async function removeVehicleAndUpdateBooking(vehicleDetails_, orderId, uid, location, userSelectedVehicleQuantity, data) {
+const  removeVehicleAndUpdateBooking = async (vehicleDetails_, orderId, uid, location, userSelectedVehicleQuantity, data) => {
+
+// async function removeVehicleAndUpdateBooking(vehicleDetails_, orderId, uid, location, userSelectedVehicleQuantity, data) {
     try {
         const { remaining, booked, waiting } = vehicleDetails_;
         if (remaining > 0) {
@@ -869,7 +881,8 @@ async function removeVehicleAndUpdateBooking(vehicleDetails_, orderId, uid, loca
     }
 }
 
-async function updateBookingStatus(isRemaining, orderId, uid, location, data) {
+const  updateBookingStatus = async (isRemaining, orderId, uid, location, data) => {
+// async function updateBookingStatus(isRemaining, orderId, uid, location, data) {
     try {
         var status = isRemaining ? "CONFIRMED" : "WAITING";
         if(data.STATUS !== 'TXN_SUCCESS'){
@@ -895,7 +908,8 @@ async function updateBookingStatus(isRemaining, orderId, uid, location, data) {
     }
 }
 
-async function UpdateVehicle(remaining, booked, waiting, isFromRemaining, vid, uid, location, userSelectedVehicleQuantity) {
+const  UpdateVehicle = async (remaining, booked, waiting, isFromRemaining, vid, uid, location, userSelectedVehicleQuantity) => {
+// async function UpdateVehicle(remaining, booked, waiting, isFromRemaining, vid, uid, location, userSelectedVehicleQuantity) {
     try {
         let remain = remaining;
         let wait = waiting;

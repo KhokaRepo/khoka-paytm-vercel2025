@@ -41,7 +41,8 @@ const storeTransactionLog = async (data) => {
 };
 
 
-async function getUserByUID(uid) {
+
+const getUserByUID = async (uid) => {
   try {
     const userRef = doc(db, "USERS", uid); // Reference to the user's document
     const userSnap = await getDoc(userRef);
