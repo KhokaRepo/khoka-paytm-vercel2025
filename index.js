@@ -16,7 +16,19 @@ const { ref,get, update ,child} = require("firebase/database");
 const isProd = true;
 let mid = mids;
 let mkey = mkeys;
-
+const DB_PATHS = {
+    LOCATIONS: "LOCATIONS",
+    VEHICLE_TYPES: "VEHICLETYPES",
+    PLANS: "PLANS",
+    VEHICLES: "VEHICLES",
+    SERVICES: "SERVICES",
+    BANNER_PHOTO: "BANNERPHOTO",
+    BOOKINGS: "BOOKINGS",
+    CANCELLATION: "CANCELLATION",
+    TRANSACTIONS: "TRANSACTIONS",
+    SERVER_STATUS: "SERVER_STATUS",
+    NOTIFICATIONS: "NOTIFICATIONS"
+};
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 465,
@@ -257,9 +269,7 @@ app.post('/api/v1/redirect',  async (req, res) => {
 
         const form = new formidable.IncomingForm();
 
-        form.parse(req, (err, fields) => {
-
-          
+        form.parse(req, async (err, fields) => {
 
             console.log('fields Redirect page invoke - 1')
             try {
@@ -309,15 +319,53 @@ app.post('/api/v1/redirect',  async (req, res) => {
                     
                     else {
                         console.log("Signature verification failed", location, vid);
-                        fetchVehicleById(location, vid)
-                            .then(vehicleDetails => {
-                                if (vehicleDetails) {
-                                    // update the bookings  
-                                    createBookingDetailsAfterSuccessful(body, vehicleDetails, uid, location, userSelectedVehicleQuantity);
-                                } else {
-                                    console.log('Vehicle not found');
-                                }
-                            })
+                        try {
+
+                            if (!location || !vid) {
+                                throw new Error("User location and vehicle ID are required.");
+                            }
+                    
+                            const userlocation = location.replace(/\s+/g, '').toLowerCase();
+                            const vehiclePath = `${DB_PATHS.VEHICLES}/${userlocation}/${vid}`; // Path to specific vehicle
+                            const dbRef = ref(realtimeDb);
+                    
+                            let snapshot;
+                            try {
+                                snapshot = await get(child(dbRef, vehiclePath));
+                            } catch (firebaseError) {
+                                throw new Error(`Firebase read error: ${firebaseError.message}`);
+                            }
+                    
+                            if (snapshot.exists()) {
+                                const data = snapshot.val();
+                                const vehicleDetails = {
+                                    id: vid,
+                                    booked: data.booked || 0,
+                                    date: data.date || "",
+                                    location: data.location || "",
+                                    remaining: data.remaining || 0,
+                                    title: data.title || "",
+                                    total: data.total || 0,
+                                    waiting: data.waiting || 0
+                                };
+                                createBookingDetailsAfterSuccessful(body, vehicleDetails, uid, location, userSelectedVehicleQuantity);
+                            } else {
+                                console.warn(`Vehicle with ID ${vid} not found.`);
+                                 
+                            }
+                        } catch (error) {
+                            console.error("Error fetching vehicle:", error.message);
+                          
+                        }
+                        // fetchVehicleById(location, vid)
+                        //     .then(vehicleDetails => {
+                        //         if (vehicleDetails) {
+                        //             // update the bookings  
+                        //             createBookingDetailsAfterSuccessful(body, vehicleDetails, uid, location, userSelectedVehicleQuantity);
+                        //         } else {
+                        //             console.log('Vehicle not found');
+                        //         }
+                        //     })
                     } 
                 } catch (error) {
                  console.log('error', error)
@@ -673,21 +721,6 @@ app.post('/api/v1/stage_token', async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
-
-const DB_PATHS = {
-    LOCATIONS: "LOCATIONS",
-    VEHICLE_TYPES: "VEHICLETYPES",
-    PLANS: "PLANS",
-    VEHICLES: "VEHICLES",
-    SERVICES: "SERVICES",
-    BANNER_PHOTO: "BANNERPHOTO",
-    BOOKINGS: "BOOKINGS",
-    CANCELLATION: "CANCELLATION",
-    TRANSACTIONS: "TRANSACTIONS",
-    SERVER_STATUS: "SERVER_STATUS",
-    NOTIFICATIONS: "NOTIFICATIONS"
-};
-
 
 
 const  createOrUpdateBookingAttributes = async (bookingId, userId, updateObject, userLocation) => {
